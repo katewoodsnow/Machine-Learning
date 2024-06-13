@@ -1,0 +1,438 @@
+# Install the decision trees\n",
+    "!pip install dtreeviz\n"
+
+import sys\n",
+    "!{sys.executable} -m pip install xgboost"
+
+"# install xgboost\n",
+    "! python -m pip install xgboost"
+
+ "#install shap\n",
+"! python -m pip install shap"
+
+"#Import librarys\n",
+    "import numpy as np\n",
+    "import pandas as pd\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "import shap\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "from xgboost import XGBClassifier\n",
+    "from sklearn.preprocessing import LabelEncoder, StandardScaler\n",
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "from sklearn.model_selection import GridSearchCV\n",
+    "from sklearn.linear_model import LogisticRegression\n",
+    "from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score, classification_report, confusion_matrix, ConfusionMatrixDisplay, PrecisionRecallDisplay, RocCurveDisplay"
+
+ "#Read dataset into pandas dataframe\n",
+    "df = pd.read_csv(r\"C:\\student_dropout.csv\")\n",
+
+"# Check dataset for missing values, number of instances, data type, column names, and number of variables\n",
+    "df.info()"
+
+"# Check shape of dataset\n",
+    "df.shape"
+
+"# Check dataset size\n",
+    "df.size"
+
+"# Check the first and last lines of the dataset\n",
+    "df.head"
+
+"# Check again for missing values in dataset, non found\n",
+    "print(df.isnull().sum())"
+
+"# Check for duplicates in dataset, non found\n",
+    "print(df.duplicated().sum())"
+
+"# Check number of unique values that match those stipulalated in the data authors write up\n",
+    "# If there are more than expected there are instances which are incorrect, non found.\n",
+    " for i in df.columns:\n",
+    "    print(i,\"=>\\t\",len(df[i].unique()))"
+
+# View the statistics for each column to check distribution\n",
+    "df.describe()"
+
+"# Check target data type\n",
+    "df['Target'].unique()"
+
+"# Check the quantity of the three targets, the data is imbalanced."
+
+# Visualize the target quantity using a bar chart\n",
+    "fig = plt.figure(figsize = (10, 5))\n",
+    "data = df['Target']\n",
+    "# Add the title\n",
+    "sns.countplot(x=data).set_title('Students Enrollment Status')"
+
+# Visualize the percentage split of the targets\n",
+    "data= df['Target'].value_counts()\n",
+    "labels = ['Graduate', 'Dropout', 'Enrolled']\n",
+    "\n",
+    "# Change colour \n",
+    "colors = sns.color_palette('pastel')[0:5]\n",
+    "\n",
+    "# Create the pie chart and add the labels\n",
+    "plt.pie(data, labels = labels, colors = colors, autopct='%.0f%%')\n",
+    "plt.title(\"Student Enrollment Status\")\n",
+    "plt.legend( loc = 'upper right')\n",
+    "plt.show()"
+
+# Distribution and count of each variable, vertical height is the count of each valaue with each variable\n",
+    "plt.figure(figsize = (40,65))\n",
+    "\n",
+    "# For each variable create a plot\n",
+    "for i in range(0, 34):\n",
+    "    plt.subplot(18,2,i+1)\n",
+    "    sns.histplot(df.iloc[:, i], color='green', kde=True )\n",
+    "    plt.grid()\n"
+
+"# Remove enrolled due to uncertainty if student will dropout or not\n",
+    "df.drop(df[df['Target'] == \"Enrolled\"].index, inplace = True)\n",
+    "df"
+
+"# Get the quantity of the remaining two targets\n",
+    "df['Target'].value_counts()"
+
+"# Check the new target values in dataframe\n",
+    "df"
+
+# Visualize the quantity for each target with a bar chart\n",
+    "fig = plt.figure(figsize = (10, 5))\n",
+    "data = df['Target']\n",
+    "\n",
+    "# Set the title\n",
+    "sns.countplot(x=data).set_title('Students Enrollment Status')"
+
+# Visualize the percentage split of targets in a pie chart\n",
+    "# This can be used as a marker, the model needs to predict more than 39% of dropout correctly to be worth while.\n",
+    "# If you marked all students as dropped out it would equate to 39%..\n",
+    "data= df['Target'].value_counts()\n",
+    "labels = ['Graduate', 'Dropout']\n",
+    "\n",
+    "# Change the colour\n",
+    "colors = sns.color_palette('pastel')[0:5]\n",
+    "\n",
+    "#create the pie chart and labels\n",
+    "plt.pie(data, labels = labels, colors = colors, autopct='%.0f%%', explode = (0.2, 0.0))\n",
+    "plt.title(\"Student Enrollment Status\")\n",
+    "plt.legend( loc = 'upper right')\n",
+    "plt.show()"
+
+# Distribution of each value within each variable per target, dropout and graduate\n",
+    "# plot size\n",
+    "plt.figure(figsize = (20,45))\n",
+    "# Add features\n",
+    "features = ['Marital status', 'Application mode', 'Application order', 'Course', 'Daytime/evening attendance',\n",
+    "             'Previous qualification', 'Nacionality', \"Mother's qualification\", \"Father's qualification\", \n",
+    "              'Displaced', 'Educational special needs', 'Debtor', 'Tuition fees up to date', 'Gender', 'Scholarship holder',\n",
+    "              'Age at enrollment', 'Curricular units 1st sem (credited)','Curricular units 1st sem (enrolled)',\n",
+    "              'Curricular units 1st sem (evaluations)', 'Curricular units 1st sem (approved)', \n",
+    "              'Curricular units 1st sem (grade)', 'Curricular units 1st sem (without evaluations)', \n",
+    "              'Curricular units 2nd sem (credited)', 'Curricular units 2nd sem (enrolled)',\n",
+    "              'Curricular units 2nd sem (evaluations)', 'Curricular units 2nd sem (approved)',\n",
+    "              'Curricular units 2nd sem (grade)', 'Curricular units 2nd sem (without evaluations)',\n",
+    "             'GDP']\n",
+    "\n",
+    "# Initialise the count for each plot\n",
+    "count = 1 \n",
+    "# Plot title\n",
+    "plt.suptitle(\"Distribution of variables according to student status\", fontsize = 15)\n",
+    "# Plot each bar chart\n",
+    "for i in features:\n",
+    "    plt.subplot(20, 3, count)\n",
+    "    plt.xlabel(i)\n",
+    "    sns.countplot(data = df, x = i, hue = 'Target' )\n",
+    "    count = count + 1\n",
+    " \n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+
+"# Plot pearsons correlation coefficent to check how the variables are correlated to each other\n",
+    "plt.figure(figsize=(18,15))\n",
+    "sns.heatmap(df.corr(),annot=True, fmt=\".2f\")\n",
+    "plt.title(\"Correlation Between Features\",fontsize=18,color=\"black\");"
+
+"# plot correclation between the dropout target and the features\n",
+    "df.corr()['Target']\n",
+    "\n",
+    "plt.figure(figsize=(5,10))\n",
+    "sns.heatmap(df.corr()[['Target']], annot=True)\n",
+    "plt.show()"
+
+"#Test-train split 80/20% to increase the amount of training data\n",
+    "# split the features\n",
+    "x = df.iloc[:, :34].values\n",
+    "x\n",
+    "# split the target\n",
+    "y = df['Target']\n",
+    "y\n",
+    "\n",
+    "# Random state ensures the split is constant\n",
+    "X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)\n",
+    "\n",
+    "# Print the splits for training and test data for both targets\n",
+    "print(\"X_train :\",X_train.shape)\n",
+    "print(\"X_test :\",X_test.shape)\n",
+    "print(\"Y_train :\",y_train.shape)\n",
+    "print(\"Y_test :\",y_test.shape)"
+
+"# Run the training data on Random Forest classifier\n",
+    "model_randomforest = RandomForestClassifier()\n",
+    "model_randomforest.fit(X_train, y_train)\n",
+    "# Run test data and print results for all the evaluation metrics\n",
+    "y_predict = model_randomforest.predict(X_test)\n",
+    "print(\"Accuracy : \", accuracy_score(y_test, y_predict ))\n",
+    "print(\"Precision : \", precision_score(y_test, y_predict))\n",
+    "print(\"Recall : \", recall_score(y_test, y_predict))\n",
+    "print(\"Accuracy : \", accuracy_score(y_test, y_predict))\n",
+    "print(\"F1 Score : \", f1_score(y_test, y_predict))\n",
+    "# Create confusion matrix\n",
+    "cm = confusion_matrix(y_test, y_predict)\n",
+    "# Create labels\n",
+    "cm = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels=['Graduate', 'Dropout'])\n",
+    "cm.plot()"
+
+"# Set the hyperparameter space\n",
+    "param_grid = {\n",
+    "    'bootstrap': [False,True],\n",
+    "    'max_depth': [2,4, 16],\n",
+    "    'max_features': [3, 5],\n",
+    "    'min_samples_split': [1,2,3],\n",
+    "    'min_samples_leaf': [1,2,3],\n",
+    "    'n_estimators': [10, 20]\n",
+    "}\n",
+    "\n",
+    "# Build the grid-search with 3fold cross validation\n",
+    "rf = RandomForestClassifier()\n",
+    "grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv = 3, n_jobs = -1, verbose = 2, scoring = 'accuracy')\n",
+    "# Train the model\n",
+    "grid_search.fit(X_train, y_train)\n",
+    "# Test the model\n",
+    "y_predict = grid_search.predict(X_test)\n",
+    "\n",
+    "# Create confusion matrix\n",
+    "cm = confusion_matrix(y_test, y_predict)\n",
+    "cm = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels=['Graduate', 'Dropout'])\n",
+    "cm.plot()\n",
+    "\n",
+    "# Print the best paramaters \n",
+    "print(grid_search.best_params_)\n",
+    "print(grid_search.best_estimator_)\n",
+    "print(grid_search.best_score_)\n",
+    "\n",
+    "# Print the evaluation scores from running random forest after the hyperparameter tuning\n",
+    "\n",
+    "print(\"Accuracy : \", accuracy_score(y_test, y_predict ))\n",
+    "print(\"Precision : \", precision_score(y_test, y_predict))\n",
+    "print(\"Recall : \", recall_score(y_test, y_predict))\n",
+    "print(\"F1 Score : \", f1_score(y_test, y_predict))\n"
+
+"# Plot the PR-Curve of random forest\n",
+    "fig, ax = plt.subplots()\n",
+    "plt.title(\"Precision-Recall Curve\")\n",
+    "# Display the AP score\n",
+    "PrecisionRecallDisplay.from_predictions(y_test, y_predict, ax = ax, name = \"RF\")"
+
+"# Plot the ROC Curve for rf\n",
+    "fig, ax = plt.subplots()\n",
+    "plt.title(\"ROC Curve\")\n",
+    "# Display the AUC score\n",
+    "RocCurveDisplay.from_predictions(y_test, y_predict, ax = ax, name = \"RF\")\n"
+
+"# Run SHAP summary plot to explain prediction decision of Random Forest\n",
+    "explainer = shap.TreeExplainer(model_randomforest)\n",
+    "shap_values = explainer.shap_values(X_test)\n",
+    "\n",
+    "shap.summary_plot(shap_values[1], X_test, plot_type=\"bar\", feature_names=df.iloc[:, :34].columns.tolist())\n",
+    "\n"
+
+"# Calculate the shap values for each value in every instance, positive values denote prediction strength of dropout \n",
+    "# and negative is graduate. Blue is lower feature value and read higher.\n",
+    "shap.summary_plot(shap_values[1], X_test, feature_names=df.iloc[:, :34].columns.tolist())"
+
+"# Plot shap values for single instance, rf predicted this incorrectly as dropout out when this student graduated\n",
+    "explainer = shap.TreeExplainer(model_randomforest)\n",
+    "shap_values = explainer.shap_values(X_test)\n",
+    "\n",
+    "shap.initjs()\n",
+    "# shap value for first instance, rf predicted dropout\n",
+    "shap.force_plot(explainer.expected_value[1], shap_values[1][0], X_test[0,:],\n",
+    "               feature_names=df.iloc[:, :34].columns.tolist())"
+
+"# Shap value for 9th instance\n",
+    "explainer = shap.TreeExplainer(model_randomforest)\n",
+    "shap_values = explainer.shap_values(X_test)\n",
+    "\n",
+    "# visualize. machine predicted this student would dropout with high probability \n",
+    "shap.initjs()\n",
+    "shap.force_plot(explainer.expected_value[1], shap_values[1][9], X_test[9,:],\n",
+    "               feature_names=df.iloc[:, :34].columns.tolist())"
+
+"# Shap value for 470th instance\n",
+    "explainer = shap.TreeExplainer(model_randomforest)\n",
+    "shap_values = explainer.shap_values(X_test)\n",
+    "# visualize, machine learning predictied this student would graduate\n",
+    "shap.initjs()\n",
+    "shap.force_plot(explainer.expected_value[1], shap_values[1][470], X_test[470,:],\n",
+    "               feature_names=df.iloc[:, :34].columns.tolist())"
+
+"# Train xgboost\n",
+    "model_xgb = XGBClassifier() \n",
+    "model_xgb.fit(X_train, y_train)\n",
+    "#Test xgboost and print scores\n",
+    "y_predict = model_xgb.predict(X_test)\n",
+    "print(\"Accuracy : \", accuracy_score(y_test, y_predict ))\n",
+    "print(\"Precision : \", precision_score(y_test, y_predict))\n",
+    "print(\"Recall : \", recall_score(y_test, y_predict))\n",
+    "print(\"Accuracy : \", accuracy_score(y_test, y_predict))\n",
+    "print(\"F1 Score : \", f1_score(y_test, y_predict))\n",
+    "# Create confusion matrix\n",
+    "cm = confusion_matrix(y_test, y_predict)\n",
+    "cm = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels=['Graduate', 'Dropout'])\n",
+    "cm.plot()\n"
+
+"# Set the hyperparameter space for xgboost\n",
+    "param_grid = {\n",
+    "        'min_child_weight': [1, 5, 10],\n",
+    "        'gamma': [0.5, 1, 1.5],\n",
+    "        'subsample': [0.6, 0.8, 1.0],\n",
+    "        'colsample_bytree': [0.6, 0.8],\n",
+    "        'max_depth': [1, 2]\n",
+    "        }\n",
+    "\n",
+    "# Build grid-search and train \n",
+    "xgb = XGBClassifier()\n",
+    "grid_search = GridSearchCV(estimator = xgb, param_grid = param_grid, cv = 3, n_jobs = -1, verbose = 2, scoring = 'accuracy')\n",
+    "grid_search.fit(X_train, y_train)\n",
+    "\n",
+    "# Test model\n",
+    "y_predict = grid_search.predict(X_test)\n",
+    "\n",
+    "# Create confusion matrix\n",
+    "cm = confusion_matrix(y_test, y_predict)\n",
+    "cm = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels=['Graduate', 'Dropout'])\n",
+    "cm.plot()\n",
+    "\n",
+    "# Print the best parameter \n",
+    "print(grid_search.best_params_)\n",
+    "print(grid_search.best_estimator_)\n",
+    "print(grid_search.best_score_)\n",
+    "\n",
+    "# Print scores of evaluation metrics\n",
+    "print(\"Accuracy : \", accuracy_score(y_test, y_predict ))\n",
+    "print(\"Precision : \", precision_score(y_test, y_predict))\n",
+    "print(\"Recall : \", recall_score(y_test, y_predict))\n",
+    "print(\"F1 Score : \", f1_score(y_test, y_predict))"
+
+"# Plot PR Curve for xgboost\n",
+    "fig, ax = plt.subplots()\n",
+    "plt.title(\"Precision-Recall Curve\")\n",
+    "# Display the AP score\n",
+    "PrecisionRecallDisplay.from_predictions(y_test, y_predict, ax = ax, name = \"XGB\")"
+
+"# Plot the ROC curve for xgb\n",
+    "fig, ax = plt.subplots()\n",
+    "plt.title(\"ROC Curve\")\n",
+    "# Display the AUC score\n",
+    "RocCurveDisplay.from_predictions(y_test, y_predict, ax = ax, name = \"XGB\")"
+
+ "# Global SHAP to show the features with the strongest predictors on dropout\n",
+    "explainer = shap.TreeExplainer(model_xgb)\n",
+    "shap_values = explainer.shap_values(X_test)\n",
+    "shap.summary_plot(shap_values, X_test, plot_type=\"bar\", feature_names=df.iloc[:, :34].columns.tolist())\n"
+
+"# Calculate the shap values for the strongest prediction features. Positive is predicting dropout and negative \n",
+    "# is predicting graduate\n",
+    "shap.summary_plot(shap_values, X_test, feature_names=df.iloc[:, :34].columns.tolist())"
+
+"# Plot the shap value for the first instance, same as xgboost for comparison\n",
+    "explainer = shap.TreeExplainer(model_xgb)\n",
+    "shap_values = explainer.shap_values(X_test)\n",
+    "# Xgb predicted this studetn as dropout but they graduated\n",
+    "shap.initjs()\n",
+    "shap.force_plot(explainer.expected_value, shap_values[1,:], X_test[1,:],\n",
+    "               feature_names=df.iloc[:, :34].columns.tolist())"
+
+
+"# Plot for 470 instance same as RF, xgb predicted this student dropped out\n",
+    "explainer = shap.TreeExplainer(model_xgb)\n",
+    "shap_values = explainer.shap_values(X_test)\n",
+    "\n",
+    "\n",
+    "shap.initjs()\n",
+    "shap.force_plot(explainer.expected_value, shap_values[470,:], X_test[470,:],\n",
+    "               feature_names=df.iloc[:, :34].columns.tolist())"
+
+"# Plot for the 9th instance, xgb predicted this student would dropout.\n",
+    "explainer = shap.TreeExplainer(model_xgb)\n",
+    "shap_values = explainer.shap_values(X_test)\n",
+    "\n",
+    "shap.initjs()\n",
+    "shap.force_plot(explainer.expected_value, shap_values[9,:], X_test[9,:],\n",
+    "               feature_names=df.iloc[:, :34].columns.tolist())"
+
+ "# train and test Logistic Regression\n",
+    "model_logisticregression = LogisticRegression()\n",
+    "# Train the model\n",
+    "model_logisticregression.fit(X_train,y_train) \n",
+    "# Test the model\n",
+    "y_predict = model_logisticregression.predict(X_test)\n",
+    "# Print the scores of each metric\n",
+    "print(\"Accuracy : \", accuracy_score(y_test, y_predict ))\n",
+    "print(\"Precision : \", precision_score(y_test, y_predict))\n",
+    "print(\"Recall : \", recall_score(y_test, y_predict))\n",
+    "print(\"Accuracy : \", accuracy_score(y_test, y_predict))\n",
+    "print(\"F1 Score : \", f1_score(y_test, y_predict))\n",
+    "\n",
+    "# Create the confusion matrix\n",
+    "cm = confusion_matrix(y_test, y_predict)\n",
+    "cm = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels=['Graduate', 'Dropout'])\n",
+    "cm.plot()"
+
+"# Set the paramter for the grid-search 3 fold cross validation\n",
+    "param_grid ={\"C\":np.logspace(-3,3,7), \n",
+    "             \"penalty\":[\"l2\"]\n",
+    "            }\n",
+    "\n",
+    "# Run the grid-search on lr\n",
+    "logistic_regression=LogisticRegression()\n",
+    "grid_search =GridSearchCV(estimator = logistic_regression, param_grid = param_grid, cv = 3, n_jobs = -1, verbose = 2, scoring = 'accuracy')\n",
+    "# Train the model\n",
+    "grid_search.fit(X_train,y_train)\n",
+    "# Test the model\n",
+    "y_predict = grid_search.predict(X_test)\n",
+    "\n",
+    "\n",
+    "# Create confusion matrix\n",
+    "cm = confusion_matrix(y_test, y_predict)\n",
+    "cm = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels=['Graduate', 'Dropout'])\n",
+    "cm.plot()\n",
+    "\n",
+    "# Print the best parameter\n",
+    "print(grid_search.best_params_)\n",
+    "print(grid_search.best_estimator_)\n",
+    "print(grid_search.best_score_)\n",
+    "error_score='raise'\n",
+    "\n",
+    "# Print the scores of each metric\n",
+    "print(\"Accuracy : \", accuracy_score(y_test, y_predict ))\n",
+    "print(\"Precision : \", precision_score(y_test, y_predict))\n",
+    "print(\"Recall : \", recall_score(y_test, y_predict))\n",
+    "print(\"F1 Score : \", f1_score(y_test, y_predict))"
+
+"# Plot the pr curve for lr\n",
+    "fig, ax = plt.subplots()\n",
+    "plt.title(\"Precision-Recall Curve\")\n",
+    "\n",
+    "PrecisionRecallDisplay.from_predictions(y_test, y_predict, ax = ax, name = \"LR\", color='cyan')"
+
+
+
+
+
+
+
+
+
+
+
